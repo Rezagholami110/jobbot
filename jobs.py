@@ -14,13 +14,6 @@ def send(text):
     requests.post(url, json={"chat_id": CHAT_ID, "text": text})
 
 print("Bot started...")
-
-while True:
-    for feed_url in FEEDS:
-        feed = feedparser.parse(feed_url)
-        for entry in feed.entries[:5]:
-            send(entry.title + "\n" + entry.link)
-            time.sleep(1)
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
@@ -37,5 +30,13 @@ def run_http():
     server.serve_forever()
 
 threading.Thread(target=run_http).start()
+while True:
+    for feed_url in FEEDS:
+        feed = feedparser.parse(feed_url)
+        for entry in feed.entries[:5]:
+            send(entry.title + "\n" + entry.link)
+            time.sleep(1)
+
 
     time.sleep(1800)
+
