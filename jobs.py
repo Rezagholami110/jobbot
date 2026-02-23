@@ -21,5 +21,21 @@ while True:
         for entry in feed.entries[:5]:
             send(entry.title + "\n" + entry.link)
             time.sleep(1)
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import os
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running")
+
+def run_http():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('', port), Handler)
+    server.serve_forever()
+
+threading.Thread(target=run_http).start()
 
     time.sleep(1800)
