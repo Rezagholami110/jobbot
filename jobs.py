@@ -208,7 +208,6 @@ def gdelt_search(query: str, max_records: int = 15):
     data = r.json()
     return data.get("articles", []) or []
 
-
 def check_keywords(seen: set):
  pairs = list_all_keywords()
 
@@ -296,6 +295,7 @@ updater.idle()
 
 if __name__ == "__main__":
     main()
+
 
 
 
