@@ -143,50 +143,6 @@ def parse_arg(text: str):
         return ""
     return parts[1].strip()
 
-    try:
-        # v20+
-        from telegram import Update
-        from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-
-        async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            uid = update.effective_chat.id
-            start_text(uid)
-
-        async def add_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            uid = update.effective_chat.id
-            kw = " ".join(context.args).strip() if context.args else ""
-            if not kw:
-                tg_send("⚠️ مثال: /add bitcoin", chat_id=uid)
-                return
-            add_keyword(uid, kw)
-            tg_send(f"✅ Added: {kw}", chat_id=uid)
-
-        async def remove_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            uid = update.effective_chat.id
-            kw = " ".join(context.args).strip() if context.args else ""
-            if not kw:
-                tg_send("⚠️ مثال: /remove bitcoin", chat_id=uid)
-                return
-            remove_keyword(uid, kw)
-            tg_send(f"✅ Removed: {kw}", chat_id=uid)
-
-        async def list_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            uid = update.effective_chat.id
-            kws = list_keywords(uid)
-            if not kws:
-                tg_send("📭 لیست خالی است.", chat_id=uid)
-                return
-            tg_send("📌 Monitoring:\n- " + "\n- ".join(kws), chat_id=uid)
-
-        app = ApplicationBuilder().token(BOT_TOKEN).build()
-        app.add_handler(CommandHandler("start", start_cmd))
-        app.add_handler(CommandHandler("add", add_cmd))
-        app.add_handler(CommandHandler("remove", remove_cmd))
-        app.add_handler(CommandHandler("list", list_cmd))
-
-        app.run_polling()
-
-    except Exception:
         # v13
         from telegram.ext import Updater, CommandHandler
 
@@ -240,6 +196,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
