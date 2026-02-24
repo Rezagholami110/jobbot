@@ -37,17 +37,25 @@ def must_int(s: str, default: int = 0) -> int:
 
 ADMIN_ID = must_int(ADMIN_ID_STR, 0)
 
-
-def tg_send(text: str):
+def tg_send(text: str, chat_id=None):
     """
-    ارسال پیام به تلگرام (بدون نیاز به python-telegram-bot برای ارسال)
+    ارسال پیام به تلگرام
+    اگر chat_id داده شود → به همان کاربر می‌فرستد
+    اگر داده نشود → به CHAT_ID پیش‌فرض می‌فرستد
     """
-    if not BOT_TOKEN or not CHAT_ID:
+    if not BOT_TOKEN:
         return
+
+    cid = chat_id or CHAT_ID
+
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     requests.post(
         url,
-        json={"chat_id": CHAT_ID, "text": text, "disable_web_page_preview": True},
+        json={
+            "chat_id": cid,
+            "text": text,
+            "disable_web_page_preview": True
+        },
         timeout=25
     )
 
@@ -209,7 +217,7 @@ def gdelt_search(query: str, max_records: int = 15):
     return data.get("articles", []) or []
 
 def check_keywords(seen: set):
- pairs = list_all_keywords()
+    pairs = list_all_keywords()
 
     for user_id, kw in pairs:
         url = f"https://news.google.com/rss/search?q={kw}"
@@ -295,6 +303,7 @@ updater.idle()
 
 if __name__ == "__main__":
     main()
+
 
 
 
