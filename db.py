@@ -19,3 +19,6 @@ def add_keyword(user_id, keyword):
 def list_keywords(user_id):
     cursor = conn.execute("SELECT keyword FROM keywords WHERE user_id=?", (user_id,))
     return [row[0] for row in cursor.fetchall()]
+def list_all_keywords():
+    cursor = conn.execute("SELECT user_id, keyword FROM keywords")
+    return cursor.fetchall()
