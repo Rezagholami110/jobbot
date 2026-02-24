@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import requests
 import feedparser
+from db import add_keyword, list_keywords, remove_keyword
 from telegram.ext import Updater, CommandHandler
 
 # ---------------- ENV (Render -> Settings -> Environment) ----------------
@@ -83,6 +84,47 @@ def start_cmd(update, context):
 
 
 def ping_cmd(update, context):
+    def add_cmd(update, context):
+    if not is_admin(update):
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /add <word>")
+        return
+
+    word = context.args[0]
+    user_id = update.effective_user.id
+
+    add_keyword(user_id, word)
+    update.message.reply_text(f"Added: {word}")
+
+
+def list_cmd(update, context):
+    if not is_admin(update):
+        return
+
+    user_id = update.effective_user.id
+    keywords = list_keywords(user_id)
+
+    if not keywords:
+        update.message.reply_text("Empty")
+    else:
+        update.message.reply_text("\n".join(keywords))
+
+
+def remove_cmd(update, context):
+    if not is_admin(update):
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /remove <word>")
+        return
+
+    word = context.args[0]
+    user_id = update.effective_user.id
+
+    remove_keyword(user_id, word)
+    update.message.reply_text(f"Removed: {word}")
     if not is_admin(update):
         return
     update.message.reply_text("🏓 Pong! Bot is alive.")
@@ -201,7 +243,7 @@ def monitor_loop():
 
             # ذخیره seen (برای جلوگیری از بزرگ شدن فایل)
             save_json(SEEN_FILE, sorted(list(seen))[-8000:])
-
+            time.sleep(300)  # 5 minutes delay
         except Exception as e:
             # خطا را برای خودت بفرست (اختیاری)
             try:
@@ -249,11 +291,10 @@ def main():
 
     updater.start_polling(drop_pending_updates=True)
 
-import threading
-threading.Thread(target=monitor_loop, daemon=True).start()
 
 updater.idle()
 
 if __name__ == "__main__":
     main()
+
 
