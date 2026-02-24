@@ -221,8 +221,12 @@ def main():
         dp.add_handler(CommandHandler("remove", remove_cmd))
         dp.add_handler(CommandHandler("list", list_cmd))
 
-        updater.start_polling()
-        updater.idle()
-
+        try:
+    updater.start_polling(drop_pending_updates=True)
+    updater.idle()
+except Exception as e:
+    print("Polling error:", e)
+    time.sleep(5)
 if __name__ == "__main__":
     main()
+
