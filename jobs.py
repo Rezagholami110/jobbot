@@ -143,17 +143,6 @@ def parse_arg(text: str):
         return ""
     return parts[1].strip()
 
-def main():
-    if not BOT_TOKEN or ADMIN_ID == 0:
-        raise SystemExit("Missing BOT_TOKEN or ADMIN_ID in Environment Variables")
-
-    # HTTP thread (برای اینکه Render سرویس رو alive بدونه)
-    threading.Thread(target=run_http, daemon=True).start()
-
-    # Monitor thread
-    threading.Thread(target=monitor_loop, daemon=True).start()
-
-    # --- Telegram polling: try v20+, else v13 ---
     try:
         # v20+
         from telegram import Update
@@ -251,6 +240,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
