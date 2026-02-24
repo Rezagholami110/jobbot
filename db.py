@@ -2,12 +2,13 @@ import sqlite3
 
 conn = sqlite3.connect("bot.db", check_same_thread=False)
 
-conn.execute(
-    "INSERT OR IGNORE INTO keywords (user_id, keyword) VALUES (?, ?)",
-    (user_id, keyword)
+conn.execute("""
+CREATE TABLE IF NOT EXISTS keywords (
+  user_id INTEGER,
+  keyword TEXT,
+  UNIQUE(user_id, keyword)
 )
 """)
-
 conn.commit()
 
 def add_keyword(user_id, keyword):
