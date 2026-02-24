@@ -6,7 +6,7 @@ conn.execute("""
 CREATE TABLE IF NOT EXISTS keywords (
     user_id INTEGER,
     keyword TEXT,
-    PRIMARY KEY(user_id, keyword)
+   from db import add_keyword, list_keywords, remove_keyword, list_all_keywords
 )
 """)
 
