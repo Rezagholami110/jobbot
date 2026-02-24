@@ -9,9 +9,9 @@ import feedparser
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-CHAT_ID = os.getenv("CHAT_ID", "").strip()
-ADMIN_ID_STR = os.getenv("ADMIN_ID", "").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN","").strip()
+CHAT_ID = os.getenv("CHAT_ID","").strip()
+ADMIN_ID_STR = os.getenv("ADMIN_ID","").strip()
 
 JOB_FEEDS = [
 "[https://www.indeed.co.uk/rss?q=care+worker+visa+sponsorship&l=London](https://www.indeed.co.uk/rss?q=care+worker+visa+sponsorship&l=London)",
