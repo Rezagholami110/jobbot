@@ -143,9 +143,8 @@ def parse_arg(text: str):
         return ""
     return parts[1].strip()
 
-        # v13
-        from telegram.ext import Updater, CommandHandler
-
+#v13
+from telegram.ext import Updater, CommandHandler
 def start_cmd(update, context):
             uid = update.effective_chat.id
             start_text(uid)
@@ -196,6 +195,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
