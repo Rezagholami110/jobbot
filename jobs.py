@@ -10,9 +10,9 @@ import feedparser
 from telegram.ext import Updater, CommandHandler
 
 # --------- ENV (در Render تنظیم می‌کنی) ----------
-BOT_TOKEN = os.getenv("BOT_TOKEN"8693197814:AAFTatkKU5IGDUb5p-0RYPnNtqklOZ9WzVE"").strip()
-CHAT_ID = os.getenv("CHAT_ID"138974947"").strip()           # جایی که پیام‌ها ارسال می‌شود (پی‌وی/گروه/کانال)
-ADMIN_ID = int(os.getenv("ADMIN_ID"138974947"0").strip())   # فقط خودت
+BOT_TOKEN = os.getenv("BOT_TOKEN","").strip()
+CHAT_ID = os.getenv("CHAT_ID","").strip()           # جایی که پیام‌ها ارسال می‌شود (پی‌وی/گروه/کانال)
+ADMIN_ID = int(os.getenv("ADMIN_ID","0").strip())   # فقط خودت
 # -------------------------------------------------
 
 # RSS های کاری
@@ -180,3 +180,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
