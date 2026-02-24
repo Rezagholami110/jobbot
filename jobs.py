@@ -13,6 +13,23 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 CHAT_ID_DEFAULT = os.getenv("CHAT_ID", "").strip()  # اختیاری
 ADMIN_ID_STR = os.getenv("ADMIN_ID", "0").strip()
 
+# -------- Render HTTP keepalive --------
+PORT = int(os.getenv("PORT", "10000"))
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+    def log_message(self, format, *args):
+        return
+
+def start_http_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    server.serve_forever()
+# -------- end keepalive --------
 def must_int(x: str, default: int = 0) -> int:
     try:
         return int(x)
@@ -207,6 +224,9 @@ def main():
             tg_send(f"✅ Removed: {kw}", chat_id=uid)
 
         def list_cmd(update, context):
+def main():
+    threading.Thread(target=start_http_server, daemon=True).start()
+    updater = Updater(BOT_TOKEN, use_context=True)
             uid = update.effective_chat.id
             kws = list_keywords(uid)
             if not kws:
@@ -233,6 +253,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
