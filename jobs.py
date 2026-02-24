@@ -1,309 +1,228 @@
-import os, json, time, threading, requests, feedparser
+import os
+import time
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from telegram.ext import Updater, CommandHandler
 
-from db import add_keyword, list_keywords, remove_keyword, list_all_keywords
+import feedparser
+import requests
 
-# ---------------- ENV (Render -> Settings -> Environment) ----------------
+from db import add_keyword, remove_keyword, list_keywords, list_all_keywords
+
+# -------------------- ENV (Render -> Settings -> Environment) --------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-CHAT_ID = os.getenv("CHAT_ID", "").strip()          # جایی که پیام‌ها ارسال می‌شود
-ADMIN_ID_STR = os.getenv("ADMIN_ID", "").strip()    # فقط خودت (عدد)
-# -----------------------------------------------------------------------
+CHAT_ID_DEFAULT = os.getenv("CHAT_ID", "").strip()  # اختیاری
+ADMIN_ID_STR = os.getenv("ADMIN_ID", "0").strip()
 
-# ---------------- CONFIG ----------------
-JOB_FEEDS = [
-    "https://www.indeed.co.uk/rss?q=care+worker+visa+sponsorship&l=London",
-]
-
-KEYWORDS_FILE = "keywords.json"     # ذخیره کلمات مانیتور
-SEEN_FILE = "seen_links.json"       # جلوگیری از تکرار ارسال لینک‌ها
-
-CHECK_INTERVAL_SECONDS = 30 * 60    # هر ۳۰ دقیقه
-# ---------------------------------------
-
-
-# ---------------- Utilities ----------------
-def must_int(s: str, default: int = 0) -> int:
+def must_int(x: str, default: int = 0) -> int:
     try:
-        return int(s)
+        return int(x)
     except Exception:
         return default
-
 
 ADMIN_ID = must_int(ADMIN_ID_STR, 0)
 
+# -------------------- SETTINGS --------------------
+CHECK_INTERVAL_SEC = int(os.getenv("CHECK_INTERVAL_SEC", "120"))  # هر 2 دقیقه
+SEEN_MAX = int(os.getenv("SEEN_MAX", "2000"))  # سقف حافظه لینک‌های دیده‌شده
+
+# -------------------- In-memory seen set --------------------
+seen_lock = threading.Lock()
+seen = set()  # کلیدهای دیده‌شده (در RAM)
+
+# -------------------- Telegram send (raw HTTP) --------------------
 def tg_send(text: str, chat_id=None):
-    """
-    ارسال پیام به تلگرام
-    اگر chat_id داده شود → به همان کاربر می‌فرستد
-    اگر داده نشود → به CHAT_ID پیش‌فرض می‌فرستد
-    """
     if not BOT_TOKEN:
         return
-
-    cid = chat_id or CHAT_ID
+    cid = chat_id or CHAT_ID_DEFAULT
+    if not cid:
+        return
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(
-        url,
-        json={
-            "chat_id": cid,
-            "text": text,
-            "disable_web_page_preview": True
-        },
-        timeout=25
-    )
-
-
-def load_json(path, default):
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        requests.post(
+            url,
+            json={
+                "chat_id": cid,
+                "text": text,
+                "disable_web_page_preview": True,
+            },
+            timeout=25,
+        )
     except Exception:
-        return default
+        pass
 
+# -------------------- RSS fetch --------------------
+def fetch_google_news_rss(keyword: str):
+    # Google News RSS
+    url = f"https://news.google.com/rss/search?q={keyword}"
+    feed = feedparser.parse(url)
+    return feed.entries[:5]
 
-def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def is_admin(update) -> bool:
-    return bool(update.effective_user and update.effective_user.id == ADMIN_ID)
-
-
-# ---------------- Telegram Commands ----------------
-def start_cmd(update, context):
-    if not is_admin(update):
-        return
-    update.message.reply_text(
-        "✅ Online.\n\n"
-        "Commands:\n"
-        "/add <word>\n"
-        "/remove <word>\n"
-        "/list\n"
-        "/ping"
-    )
-
-
-def ping_cmd(update, context):
-    if not is_admin(update):
-        return
-    update.message.reply_text("🏓 Pong! Bot is alive.")
-
-
-def add_cmd(update, context):
-    if not is_admin(update):
-        return
-
-    if not context.args:
-        update.message.reply_text("Usage: /add <word>")
-        return
-
-    word = context.args[0]
-    user_id = update.effective_user.id
-
-    add_keyword(user_id, word)
-    update.message.reply_text(f"Added: {word}")
-
-def list_cmd(update, context):
-    if not is_admin(update):
-        return
-
-    user_id = update.effective_user.id
-    keywords = list_keywords(user_id)
-
-    if not keywords:
-        update.message.reply_text("Empty")
-    else:
-        update.message.reply_text("\n".join(keywords))
-
-
-def remove_cmd(update, context):
-    if not is_admin(update):
-        return
-
-    if not context.args:
-        update.message.reply_text("Usage: /remove <word>")
-        return
-
-    word = context.args[0]
-    user_id = update.effective_user.id
-
-    remove_keyword(user_id, word)
-    update.message.reply_text(f"Removed: {word}")
-    if not is_admin(update):
-        return
-    update.message.reply_text("🏓 Pong! Bot is alive.")
-
-
-def add_cmd(update, context):
-    if not is_admin(update):
-        return
-    if not context.args:
-        update.message.reply_text("مثال: /add sushi")
-        return
-
-    word = " ".join(context.args).strip()
-    kws = load_json(KEYWORDS_FILE, [])
-    if word not in kws:
-        kws.append(word)
-        save_json(KEYWORDS_FILE, kws)
-
-    update.message.reply_text(f"✅ Added: {word}")
-
-
-def remove_cmd(update, context):
-    if not is_admin(update):
-        return
-    if not context.args:
-        update.message.reply_text("مثال: /remove sushi")
-        return
-
-    word = " ".join(context.args).strip()
-    kws = load_json(KEYWORDS_FILE, [])
-    kws = [k for k in kws if k != word]
-    save_json(KEYWORDS_FILE, kws)
-
-    update.message.reply_text(f"🗑 Removed: {word}")
-
-
-def list_cmd(update, context):
-    if not is_admin(update):
-        return
-    kws = load_json(KEYWORDS_FILE, [])
-    if not kws:
-        update.message.reply_text("لیست خالیه. مثلا: /add sushi")
-        return
-    update.message.reply_text("📌 Monitoring:\n- " + "\n- ".join(kws))
-
-
-# ---------------- Monitors ----------------
-def check_jobs(seen: set):
-    for feed_url in JOB_FEEDS:
-        feed = feedparser.parse(feed_url)
-        for entry in feed.entries[:25]:
-            link = entry.get("link", "")
-            title = entry.get("title", "Job")
-            key = f"JOB::{link}"
-            if not link or key in seen:
-                continue
-
-            tg_send(f"🧾 Job\n{title}\n{link}")
-            seen.add(key)
-            time.sleep(1)
-
-
-def gdelt_search(query: str, max_records: int = 15):
-    """
-    GDELT Docs API (رایگان) - خروجی اخبار/وب
-    """
-    endpoint = "https://api.gdeltproject.org/api/v2/doc/doc"
-    params = {
-        "query": query,
-        "mode": "ArtList",
-        "format": "json",
-        "maxrecords": str(max_records),
-        "sort": "DateDesc",
-    }
-    r = requests.get(endpoint, params=params, timeout=25)
-    r.raise_for_status()
-    data = r.json()
-    return data.get("articles", []) or []
-
-def check_keywords(seen: set):
-    pairs = list_all_keywords()
-
+def run_check_once():
+    pairs = list_all_keywords()  # [(user_id, keyword), ...]
     for user_id, kw in pairs:
-        url = f"https://news.google.com/rss/search?q={kw}"
-        feed = feedparser.parse(url)
+        try:
+            entries = fetch_google_news_rss(kw)
+            for entry in entries:
+                link = (entry.get("link") or "").strip()
+                title = (entry.get("title") or "No title").strip()
 
-        for entry in feed.entries[:5]:
-            link = entry.get("link", "")
-            title = entry.get("title", "No title")
+                if not link:
+                    continue
 
-            key = f"kw:{user_id}:{kw}:{link}"
-            if not link or key in seen:
-                continue
+                key = f"kw:{user_id}:{kw}:{link}"
 
-            tg_send(f"🔎 {kw}\n{title}\n{link}", chat_id=user_id)
-            seen.add(key)
+                with seen_lock:
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    # کنترل اندازه seen
+                    if len(seen) > SEEN_MAX:
+                        # حذف تعدادی (ساده و سریع)
+                        for _ in range(SEEN_MAX // 5):
+                            try:
+                                seen.pop()
+                            except KeyError:
+                                break
+
+                tg_send(f"🔎 {kw}\n{title}\n{link}", chat_id=user_id)
+
+        except Exception as e:
+            tg_send(f"⚠️ Error for '{kw}': {e}", chat_id=user_id)
 
 def monitor_loop():
-    tg_send("✅ Bot started (jobs + keywords).")
-
-    seen_list = load_json(SEEN_FILE, [])
-    if isinstance(seen_list, list):
-        seen = set(seen_list)
-    else:
-        seen = set()
-
+    tg_send("✅ Bot started (jobs + keywords).", chat_id=CHAT_ID_DEFAULT or ADMIN_ID or None)
     while True:
-        try:
-            check_jobs(seen)
-            check_keywords(seen)
+        run_check_once()
+        time.sleep(CHECK_INTERVAL_SEC)
 
-            # ذخیره seen (برای جلوگیری از بزرگ شدن فایل)
-            save_json(SEEN_FILE, sorted(list(seen))[-8000:])
-            time.sleep(300)  # 5 minutes delay
-        except Exception as e:
-            # خطا را برای خودت بفرست (اختیاری)
-            try:
-                tg_send(f"⚠️ Error: {e}")
-            except Exception:
-                pass
-
-        time.sleep(CHECK_INTERVAL_SECONDS)
-
-
-# ---------------- HTTP Server for Render (Port Binding) ----------------
+# -------------------- HTTP server for Render healthcheck --------------------
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"Bot is running")
-
-    def do_HEAD(self):
-        self.send_response(200)
-        self.end_headers()
-
+        self.wfile.write(b"ok")
 
 def run_http():
     port = int(os.environ.get("PORT", "10000"))
-    HTTPServer(("", port), Handler).serve_forever()
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
 
+# -------------------- Telegram bot handlers (supports v13 and v20+) --------------------
+def start_text(user_id: int):
+    tg_send(
+        "سلام 👋\n"
+        "دستورها:\n"
+        "/add keyword\n"
+        "/remove keyword\n"
+        "/list\n",
+        chat_id=user_id,
+    )
 
-# ---------------- Main ----------------
+def parse_arg(text: str):
+    # "/add sushi" -> "sushi"
+    parts = (text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        return ""
+    return parts[1].strip()
+
 def main():
-    if not BOT_TOKEN or not CHAT_ID or ADMIN_ID == 0:
-        raise SystemExit("Missing BOT_TOKEN / CHAT_ID / ADMIN_ID")
+    if not BOT_TOKEN or ADMIN_ID == 0:
+        raise SystemExit("Missing BOT_TOKEN or ADMIN_ID in Environment Variables")
 
+    # HTTP thread (برای اینکه Render سرویس رو alive بدونه)
     threading.Thread(target=run_http, daemon=True).start()
 
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
+    # Monitor thread
+    threading.Thread(target=monitor_loop, daemon=True).start()
 
-    dp.add_handler(CommandHandler("start", start_cmd))
-    dp.add_handler(CommandHandler("ping", ping_cmd))
-    dp.add_handler(CommandHandler("add", add_cmd))
-    dp.add_handler(CommandHandler("remove", remove_cmd))
-    dp.add_handler(CommandHandler("list", list_cmd))
+    # --- Telegram polling: try v20+, else v13 ---
+    try:
+        # v20+
+        from telegram import Update
+        from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-    updater.start_polling()
-    updater.idle()
+        async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            uid = update.effective_chat.id
+            start_text(uid)
 
+        async def add_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            uid = update.effective_chat.id
+            kw = " ".join(context.args).strip() if context.args else ""
+            if not kw:
+                tg_send("⚠️ مثال: /add bitcoin", chat_id=uid)
+                return
+            add_keyword(uid, kw)
+            tg_send(f"✅ Added: {kw}", chat_id=uid)
 
-if name == "main":
+        async def remove_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            uid = update.effective_chat.id
+            kw = " ".join(context.args).strip() if context.args else ""
+            if not kw:
+                tg_send("⚠️ مثال: /remove bitcoin", chat_id=uid)
+                return
+            remove_keyword(uid, kw)
+            tg_send(f"✅ Removed: {kw}", chat_id=uid)
+
+        async def list_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            uid = update.effective_chat.id
+            kws = list_keywords(uid)
+            if not kws:
+                tg_send("📭 لیست خالی است.", chat_id=uid)
+                return
+            tg_send("📌 Monitoring:\n- " + "\n- ".join(kws), chat_id=uid)
+
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
+        app.add_handler(CommandHandler("start", start_cmd))
+        app.add_handler(CommandHandler("add", add_cmd))
+        app.add_handler(CommandHandler("remove", remove_cmd))
+        app.add_handler(CommandHandler("list", list_cmd))
+
+        app.run_polling()
+
+    except Exception:
+        # v13
+        from telegram.ext import Updater, CommandHandler
+
+        def start_cmd(update, context):
+            uid = update.effective_chat.id
+            start_text(uid)
+
+        def add_cmd(update, context):
+            uid = update.effective_chat.id
+            kw = parse_arg(update.message.text)
+            if not kw:
+                tg_send("⚠️ مثال: /add bitcoin", chat_id=uid)
+                return
+            add_keyword(uid, kw)
+            tg_send(f"✅ Added: {kw}", chat_id=uid)
+
+        def remove_cmd(update, context):
+            uid = update.effective_chat.id
+            kw = parse_arg(update.message.text)
+            if not kw:
+                tg_send("⚠️ مثال: /remove bitcoin", chat_id=uid)
+                return
+            remove_keyword(uid, kw)
+            tg_send(f"✅ Removed: {kw}", chat_id=uid)
+
+        def list_cmd(update, context):
+            uid = update.effective_chat.id
+            kws = list_keywords(uid)
+            if not kws:
+                tg_send("📭 لیست خالی است.", chat_id=uid)
+                return
+            tg_send("📌 Monitoring:\n- " + "\n- ".join(kws), chat_id=uid)
+
+        updater = Updater(BOT_TOKEN, use_context=True)
+        dp = updater.dispatcher
+        dp.add_handler(CommandHandler("start", start_cmd))
+        dp.add_handler(CommandHandler("add", add_cmd))
+        dp.add_handler(CommandHandler("remove", remove_cmd))
+        dp.add_handler(CommandHandler("list", list_cmd))
+
+        updater.start_polling()
+        updater.idle()
+
+if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
