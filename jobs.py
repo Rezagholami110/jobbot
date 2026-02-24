@@ -1,4 +1,3 @@
-
 import os
 import json
 import time
@@ -250,9 +249,11 @@ def main():
 
     updater.start_polling(drop_pending_updates=True)
 
-    # monitor loop (همین ترد اصلی)
-    monitor_loop()
+import threading
+threading.Thread(target=monitor_loop, daemon=True).start()
 
+updater.idle()
 
 if __name__ == "__main__":
     main()
+
