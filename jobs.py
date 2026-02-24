@@ -224,9 +224,6 @@ def main():
             tg_send(f"✅ Removed: {kw}", chat_id=uid)
 
         def list_cmd(update, context):
-def main():
-    threading.Thread(target=start_http_server, daemon=True).start()
-    updater = Updater(BOT_TOKEN, use_context=True)
             uid = update.effective_chat.id
             kws = list_keywords(uid)
             if not kws:
@@ -235,6 +232,7 @@ def main():
             tg_send("📌 Monitoring:\n- " + "\n- ".join(kws), chat_id=uid)
             
 def main():
+    threading.Thread(target=start_http_server, daemon=True).start()
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
@@ -253,6 +251,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
