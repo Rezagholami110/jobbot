@@ -1,13 +1,8 @@
-import os
-import json
-import time
-import threading
+import os, json, time, threading, requests, feedparser
 from http.server import BaseHTTPRequestHandler, HTTPServer
-
-import requests
-import feedparser
-from db import add_keyword, list_keywords, remove_keyword, list_all_keywords
 from telegram.ext import Updater, CommandHandler
+
+from db import add_keyword, list_keywords, remove_keyword, list_all_keywords
 
 # ---------------- ENV (Render -> Settings -> Environment) ----------------
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
@@ -299,6 +294,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
