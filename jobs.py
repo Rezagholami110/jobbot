@@ -290,10 +290,12 @@ def main():
     dp.add_handler(CommandHandler("add", add_cmd))
     dp.add_handler(CommandHandler("remove", remove_cmd))
     dp.add_handler(CommandHandler("list", list_cmd))
-
+updater.start_polling()
+updater.idle()
 
 if __name__ == "__main__":
     main()
+
 
 
 
