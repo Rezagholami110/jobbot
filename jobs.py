@@ -276,12 +276,10 @@ def run_http():
 # ---------------- Main ----------------
 def main():
     if not BOT_TOKEN or not CHAT_ID or ADMIN_ID == 0:
-        raise SystemExit("Missing BOT_TOKEN / CHAT_ID / ADMIN_ID in environment variables")
+        raise SystemExit("Missing BOT_TOKEN / CHAT_ID / ADMIN_ID")
 
-    # HTTP thread (برای اینکه Render بگه سرویس پورت باز کرده)
     threading.Thread(target=run_http, daemon=True).start()
 
-    # Telegram command listener (polling)
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
@@ -290,11 +288,14 @@ def main():
     dp.add_handler(CommandHandler("add", add_cmd))
     dp.add_handler(CommandHandler("remove", remove_cmd))
     dp.add_handler(CommandHandler("list", list_cmd))
-updater.start_polling()
-updater.idle()
 
-if __name__ == "__main__":
+    updater.start_polling()
+    updater.idle()
+
+
+if name == "main":
     main()
+
 
 
 
