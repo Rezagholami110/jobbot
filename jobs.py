@@ -7,7 +7,7 @@ import feedparser
 import requests
 
 from db import add_keyword, remove_keyword, list_keywords, list_all_keywords
-
+from telegram.ext import Updater, CommandHandler
 # -------------------- ENV (Render -> Settings -> Environment) --------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 CHAT_ID_DEFAULT = os.getenv("CHAT_ID", "").strip()  # اختیاری
@@ -233,6 +233,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
