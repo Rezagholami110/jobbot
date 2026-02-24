@@ -142,38 +142,38 @@ def parse_arg(text: str):
     if len(parts) < 2:
         return ""
     return parts[1].strip()
-
-#v13
+# v13
 from telegram.ext import Updater, CommandHandler
+
 def start_cmd(update, context):
-            uid = update.effective_chat.id
-            start_text(uid)
+    uid = update.effective_chat.id
+    start_text(uid)
 
-        def add_cmd(update, context):
-            uid = update.effective_chat.id
-            kw = parse_arg(update.message.text)
-            if not kw:
-                tg_send("⚠️ مثال: /add bitcoin", chat_id=uid)
-                return
-            add_keyword(uid, kw)
-            tg_send(f"✅ Added: {kw}", chat_id=uid)
+def add_cmd(update, context):
+    uid = update.effective_chat.id
+    kw = parse_arg(update.message.text)
+    if not kw:
+        tg_send("مثال: /add bitcoin", chat_id=uid)
+        return
+    add_keyword(uid, kw)
+    tg_send(f"✅ Added: {kw}", chat_id=uid)
 
-        def remove_cmd(update, context):
-            uid = update.effective_chat.id
-            kw = parse_arg(update.message.text)
-            if not kw:
-                tg_send("⚠️ مثال: /remove bitcoin", chat_id=uid)
-                return
-            remove_keyword(uid, kw)
-            tg_send(f"✅ Removed: {kw}", chat_id=uid)
+def remove_cmd(update, context):
+    uid = update.effective_chat.id
+    kw = parse_arg(update.message.text)
+    if not kw:
+        tg_send("مثال: /remove bitcoin", chat_id=uid)
+        return
+    remove_keyword(uid, kw)
+    tg_send(f"✅ Removed: {kw}", chat_id=uid)
 
-        def list_cmd(update, context):
-            uid = update.effective_chat.id
-            kws = list_keywords(uid)
-            if not kws:
-                tg_send("📭 لیست خالی است.", chat_id=uid)
-                return
-            tg_send("📌 Monitoring:\n- " + "\n- ".join(kws), chat_id=uid)
+def list_cmd(update, context):
+    uid = update.effective_chat.id
+    kws = list_keywords(uid)
+    if not kws:
+        tg_send("لیست خالی است.", chat_id=uid)
+        return
+    tg_send("📌 Monitoring:\n- " + "\n- ".join(kws), chat_id=uid)
             
 def main():
     threading.Thread(target=start_http_server, daemon=True).start()
@@ -195,6 +195,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
