@@ -84,7 +84,12 @@ def start_cmd(update, context):
 
 
 def ping_cmd(update, context):
-    def add_cmd(update, context):
+    if not is_admin(update):
+        return
+    update.message.reply_text("🏓 Pong! Bot is alive.")
+
+
+def add_cmd(update, context):
     if not is_admin(update):
         return
 
@@ -97,7 +102,6 @@ def ping_cmd(update, context):
 
     add_keyword(user_id, word)
     update.message.reply_text(f"Added: {word}")
-
 
 def list_cmd(update, context):
     if not is_admin(update):
@@ -292,6 +296,7 @@ updater.idle()
 
 if __name__ == "__main__":
     main()
+
 
 
 
