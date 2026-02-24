@@ -206,26 +206,22 @@ def gdelt_search(query: str, max_records: int = 15):
 
 
 def check_keywords(seen: set):
-    kws = load_json(KEYWORDS_FILE, [])
-    for kw in kws:
-        try:
-            articles = gdelt_search(kw, max_records=15)
-        except Exception as e:
-            tg_send(f"⚠️ GDELT error for '{kw}': {e}")
-            continue
+ pairs = list_all_keywords()
 
-        for a in articles:
-            url = a.get("url", "")
-            title = a.get("title", "Result")
-            key = f"KW::{kw}::{url}"
+    for user_id, kw in pairs:
+        url = f"https://news.google.com/rss/search?q={kw}"
+        feed = feedparser.parse(url)
 
-            if not url or key in seen:
+        for entry in feed.entries[:5]:
+            link = entry.get("link", "")
+            title = entry.get("title", "No title")
+
+            key = f"kw:{user_id}:{kw}:{link}"
+            if not link or key in seen:
                 continue
 
-            tg_send(f"🔎 {kw}\n{title}\n{url}")
+            tg_send(f"🔎 {kw}\n{title}\n{link}", chat_id=user_id)
             seen.add(key)
-            time.sleep(1)
-
 
 def monitor_loop():
     tg_send("✅ Bot started (jobs + keywords).")
@@ -296,6 +292,7 @@ updater.idle()
 
 if __name__ == "__main__":
     main()
+
 
 
 
